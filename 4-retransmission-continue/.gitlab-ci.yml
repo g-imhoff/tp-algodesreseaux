@@ -1,0 +1,26 @@
+stages:
+  - build
+  - test
+
+image: registry.app.unistra.fr/montavont/img-docker/algodesreseaux
+
+build_4:
+  stage: build
+  script:
+    - cd 4-retransmission-continue
+    - make
+  artifacts:
+    paths:
+      - 4-retransmission-continue/sender-udp
+      - 4-retransmission-continue/receiver-udp
+      - 4-retransmission-continue/medium
+
+# run tests using the binary build before
+test_4:
+  stage: test
+  needs: [build_4]
+  script:
+  - |
+    echo "starting test"
+    cd 4-retransmission-continue
+    make test

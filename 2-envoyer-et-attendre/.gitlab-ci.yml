@@ -1,0 +1,25 @@
+stages:
+  - build
+  - test
+
+image: registry.app.unistra.fr/montavont/img-docker/algodesreseaux
+
+build_2:
+  stage: build
+  script:
+    - cd 2-envoyer-et-attendre
+    - make
+  artifacts:
+    paths:
+      - 2-envoyer-et-attendre/sender-udp
+      - 2-envoyer-et-attendre/receiver-udp
+
+# run tests using the binary build before
+test_2:
+  stage: test
+  needs: [build_2]
+  script:
+  - |
+    echo "starting test"
+    cd 2-envoyer-et-attendre
+    make test

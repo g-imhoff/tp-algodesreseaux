@@ -1,0 +1,24 @@
+stages:
+  - build
+  - test
+
+image: registry.app.unistra.fr/montavont/img-docker/algodesreseaux
+
+build_5.2:
+  stage: build
+  script:
+    - cd 5-tcp/5.2-serveur
+    - make
+  artifacts:
+    paths:
+      - 5-tcp/5.2-emetteur/serveur-tcp
+
+# run tests using the binary build before
+test_5.2:
+  stage: test
+  needs: [build_5.2]
+  script:
+  - |
+    echo "starting test"
+    cd 5-tcp/5.2-serveur
+    make test

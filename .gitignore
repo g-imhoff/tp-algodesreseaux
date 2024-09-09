@@ -1,0 +1,18 @@
+# Ignore compiled files
+*.o
+*.out
+sender-udp
+receiver-udp
+medium
+client-tcp
+serveur-tcp
+
+# Ignore log files
+*.log
+.idea
+.vscode
+ploup
+toto
+titi
+tata
+tutu

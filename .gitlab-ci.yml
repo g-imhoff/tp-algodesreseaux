@@ -1,0 +1,83 @@
+stages:
+  - triggers
+
+trigger_exo1.1:
+  stage: triggers
+  trigger:
+    include: 1-udp/1.1-emetteur/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes:
+        - 1-udp/1.1-emetteur/*.c
+
+trigger_exo1.2:
+  stage: triggers
+  trigger:
+    include: 1-udp/1.2-recepteur/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes:
+        - 1-udp/1.2-recepteur/*.c
+
+trigger_exo1.3:
+  stage: triggers
+  trigger:
+    include: 1-udp/1.3-transmission-continue/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes:
+        - 1-udp/1.3-transmission-continue/*.c
+
+trigger_exo2:
+  stage: triggers
+  trigger:
+    include: 2-envoyer-et-attendre/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes:
+        - 2-envoyer-et-attendre/*.c
+
+trigger_exo3:
+  stage: triggers
+  trigger:
+    include: 3-bit-alterne/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes:
+        - 3-bit-alterne/*.c
+
+trigger_exo4:
+  stage: triggers
+  trigger:
+    include: 4-retransmission-continue/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes:
+        - 4-retransmission-continue/*.c
+
+trigger_exo5.1:
+  stage: triggers
+  trigger:
+    include: 5-tcp/5.1-client/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes:
+        - 5-tcp/5.1-client/*.c
+
+trigger_exo5.2:
+  stage: triggers
+  trigger:
+    include: 5-tcp/5.2-serveur/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes:
+        - 5-tcp/5.2-serveur/*.c
+
+trigger_exo5.3:
+  stage: triggers
+  trigger:
+    include: 5-tcp/5.3-chat/.gitlab-ci.yml
+    strategy: depend
+  rules:
+    - changes:
+        - 5-tcp/5.3-chat/*.c

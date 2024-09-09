@@ -1,0 +1,24 @@
+stages:
+  - build
+  - test
+
+image: registry.app.unistra.fr/montavont/img-docker/algodesreseaux
+
+build_1.1:
+  stage: build
+  script:
+    - cd 1-udp/1.1-emetteur
+    - make
+  artifacts:
+    paths:
+      - 1-udp/1.1-emetteur/sender-udp
+
+# run tests using the binary build before
+test_1.1:
+  stage: test
+  needs: [build_1.1]
+  script:
+  - |
+    echo "starting test"
+    cd 1-udp/1.1-emetteur
+    make test

@@ -1,0 +1,25 @@
+stages:
+  - build
+  - test
+
+image: registry.app.unistra.fr/montavont/img-docker/algodesreseaux
+
+build_5.3:
+  stage: build
+  script:
+    - cd 5-tcp/5.3-chat
+    - make
+  artifacts:
+    paths:
+      - 5-tcp/5.3-chat/serveur-tcp
+      - 5-tcp/5.3-chat/client-tcp
+
+# run tests using the binary build before
+test_5.3:
+  stage: test
+  needs: [build_5.3]
+  script:
+  - |
+    echo "starting test"
+    cd 5-tcp/5.3-chat
+    make test

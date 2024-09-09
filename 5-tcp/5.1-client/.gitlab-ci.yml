@@ -1,0 +1,24 @@
+stages:
+  - build
+  - test
+
+image: registry.app.unistra.fr/montavont/img-docker/algodesreseaux
+
+build_5.1:
+  stage: build
+  script:
+    - cd 5-tcp/5.1-client
+    - make
+  artifacts:
+    paths:
+      - 5-tcp/5.1-emetteur/client-tcp
+
+# run tests using the binary build before
+test_5.1:
+  stage: test
+  needs: [build_5.1]
+  script:
+  - |
+    echo "starting test"
+    cd 5-tcp/5.1-client
+    make test

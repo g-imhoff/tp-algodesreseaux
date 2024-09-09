@@ -1,0 +1,25 @@
+stages:
+  - build
+  - test
+
+image: registry.app.unistra.fr/montavont/img-docker/algodesreseaux
+
+build_1.3:
+  stage: build
+  script:
+    - cd 1-udp/1.3-transmission-continue
+    - make
+  artifacts:
+    paths:
+      - 1-udp/1.3-transmission-continue/sender-udp
+      - 1-udp/1.3-transmission-continue/receiver-udp
+
+# run tests using the binary build before
+test_1.3:
+  stage: test
+  needs: [build_1.3]
+  script:
+  - |
+    echo "starting test"
+    cd 1-udp/1.3-transmission-continue
+    make test
