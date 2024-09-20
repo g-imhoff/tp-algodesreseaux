@@ -79,12 +79,24 @@ int main(int argc, char *argv[]) {
   int fdsock = create_socket(result);
   CHK(bind(fdsock, result->ai_addr, result->ai_addrlen));
 
+  struct sigaction sa;
+  sa.sa_handler = quit;
+  CHK(sigemptyset(&sa.sa_mask));
+  sa.sa_flags = 0;
+  CHK(sigaction(SIGTERM, &sa, NULL));
+
+  sigset_t mask;
+  CHK(sigfillset(&mask));
+  CHK(sigdelset(&mask, SIGTERM)); 
+  CHK(sigprocmask(SIG_BLOCK, &mask, NULL));
+
   while (1) {
     copie(fdsock, STDOUT_FILENO);
   }
 
+  CHK(sigprocmask(SIG_SETMASK, NULL, NULL));
   freeaddrinfo(result);
   close(fdsock);
 
-  return 0;
+  return EXIT_SUCCESS; 
 }
