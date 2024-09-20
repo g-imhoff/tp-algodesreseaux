@@ -49,10 +49,8 @@ int create_socket(const struct addrinfo *host) {
   int fdsock = socket(host->ai_family, host->ai_socktype, host->ai_protocol);
   CHK(fdsock);
 
-  if (host->ai_family == AF_INET6) {
-    int value = 0;
-    CHK(setsockopt(fdsock, IPPROTO_IPV6, IPV6_V6ONLY, &value, sizeof value));
-  }
+  int value = 0;
+  CHK(setsockopt(fdsock, IPPROTO_IPV6, IPV6_V6ONLY, &value, sizeof value));
 
   return fdsock;
 }
