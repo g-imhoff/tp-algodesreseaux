@@ -64,5 +64,8 @@ int main(int argc, char *argv[]) {
       sendto(fdsock, buff, sizeof(buff), 0, host->ai_addr, host->ai_addrlen);
   CHK(err);
 
+  freeaddrinfo(host);
+  close(fdsock);
+
   return 0;
 }
