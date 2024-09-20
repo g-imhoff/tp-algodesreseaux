@@ -67,5 +67,5 @@ int main(int argc, char *argv[]) {
   freeaddrinfo(host);
   close(fdsock);
 
-  return 0;
+  return EXIT_SUCCESS;
 }
