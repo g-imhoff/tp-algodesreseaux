@@ -31,13 +31,13 @@ noreturn void usage(const char *msg) {
 }
 
 struct addrinfo *config(const char *host, const char *port) {
-  struct addrinfo hints = {0};
+  struct addrinfo hints;
   hints.ai_flags = 0;
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_protocol = IPPROTO_UDP;
 
-  struct addrinfo *result = NULL;
+  struct addrinfo *result;
 
   int err = getaddrinfo(host, port, &hints, &result);
   CHKA(err);
@@ -47,7 +47,8 @@ struct addrinfo *config(const char *host, const char *port) {
 
 int create_socket(struct addrinfo *host) {
   int fdsock = socket(host->ai_family, host->ai_socktype, host->ai_protocol);
-  CHKA(fdsock);
+
+  CHK(fdsock);
 
   return fdsock;
 }
@@ -58,14 +59,10 @@ int main(int argc, char *argv[]) {
 
   struct addrinfo *host = config(argv[1], argv[2]);
   int fdsock = create_socket(host);
-
-  char buff[12] = "hello world";
+  char buff[11] = "hello world";
   int err =
       sendto(fdsock, buff, sizeof(buff), 0, host->ai_addr, host->ai_addrlen);
-  CHKA(err);
+  CHK(err);
 
-  freeaddrinfo(host);
-  close(fdsock);
-
-  return EXIT_SUCCESS;
+  return 0;
 }
