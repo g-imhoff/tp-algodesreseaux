@@ -47,7 +47,6 @@ struct addrinfo *config(const char *host, const char *port) {
 
 int create_socket(struct addrinfo *host) {
   int fdsock = socket(host->ai_family, host->ai_socktype, host->ai_protocol);
-
   CHK(fdsock);
 
   return fdsock;
