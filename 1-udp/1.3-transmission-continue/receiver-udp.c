@@ -32,12 +32,12 @@ noreturn void usage(const char *msg) {
 }
 
 void copie(int src, int dst) {
-  char buffer[BUFFERLEN] = {0};
-  size_t nb_bytes_read =
-      recvfrom(src, buffer, (size_t)BUFFERLEN, 0, NULL, NULL);
-  CHK((int)nb_bytes_read);
-  CHK(write(dst, buffer, nb_bytes_read));
+  char buffer[BUFFERLEN + 1] = {0};
+  size_t nb_bytes_read;
+  while ((nb_bytes_read = read(src, buffer, (size_t)BUFFERLEN)) > 0)
+    CHK(write(dst, buffer, nb_bytes_read));
 
+  CHK((int)nb_bytes_read);
   return;
 }
 
@@ -47,7 +47,7 @@ void quit(int signo) {
 }
 
 struct addrinfo *config(const char *port) {
-  struct addrinfo hints;
+  struct addrinfo hints = {0};
   hints.ai_flags = AI_PASSIVE;
   hints.ai_family = AF_INET6;
   hints.ai_socktype = SOCK_DGRAM;
@@ -78,6 +78,7 @@ int main(int argc, char *argv[]) {
   struct addrinfo *result = config(argv[1]);
   int fdsock = create_socket(result);
   CHK(bind(fdsock, result->ai_addr, result->ai_addrlen));
+  freeaddrinfo(result);
 
   struct sigaction sa;
   sa.sa_handler = quit;
@@ -87,16 +88,16 @@ int main(int argc, char *argv[]) {
 
   sigset_t mask;
   CHK(sigfillset(&mask));
-  CHK(sigdelset(&mask, SIGTERM)); 
+  CHK(sigdelset(&mask, SIGTERM));
   CHK(sigprocmask(SIG_BLOCK, &mask, NULL));
 
   while (1) {
+
     copie(fdsock, STDOUT_FILENO);
   }
 
   CHK(sigprocmask(SIG_SETMASK, NULL, NULL));
-  freeaddrinfo(result);
   close(fdsock);
 
-  return EXIT_SUCCESS; 
+  return EXIT_SUCCESS;
 }

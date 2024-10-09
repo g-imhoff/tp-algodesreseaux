@@ -33,24 +33,24 @@ noreturn void usage(const char *msg) {
 
 void copie(int src, int dst) {
   char buffer[BUFFERLEN] = {0};
-  size_t nb_bytes_read = read(src, buffer, (size_t)BUFFERLEN);
-  CHK((int)nb_bytes_read);
-  CHK(send(dst, buffer, nb_bytes_read, 0));
+  size_t nb_bytes_read;
+  while ((nb_bytes_read = read(src, buffer, (size_t)BUFFERLEN)) > 0) {
+    CHK(write(dst, buffer, nb_bytes_read));
+  }
 
-  return;
+  CHK((int)nb_bytes_read);
 }
 
 struct addrinfo *config(const char *host, const char *port) {
   struct addrinfo hints;
-  hints.ai_flags = 0;
+  hints.ai_flags = AI_NUMERICSERV | AI_NUMERICHOST;
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_protocol = IPPROTO_UDP;
 
   struct addrinfo *result;
 
-  int err = getaddrinfo(host, port, &hints, &result);
-  CHKA(err);
+  CHKA(getaddrinfo(host, port, &hints, &result));
 
   return result;
 }
@@ -70,9 +70,7 @@ int main(int argc, char *argv[]) {
   int fdsock = create_socket(host);
   CHK(connect(fdsock, host->ai_addr, host->ai_addrlen));
 
-  while (1) {
-    copie(STDIN_FILENO, fdsock);
-  }
+  copie(STDIN_FILENO, fdsock);
 
   freeaddrinfo(host);
   close(fdsock);
