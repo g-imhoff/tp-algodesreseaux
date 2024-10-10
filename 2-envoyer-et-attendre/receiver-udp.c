@@ -37,11 +37,14 @@ void process_data() {
 }
 
 void copie(int src, int dst) {
-  char buffer[BUFFERLEN + 1] = {0};
+  char buffer[BUFFERLEN_RECV + 1] = {0};
   size_t nb_bytes_read;
-  while ((nb_bytes_read = read(src, buffer, (size_t)BUFFERLEN)) > 0)
+  while ((nb_bytes_read = read(src, buffer, (size_t)BUFFERLEN_RECV)) > 0) {
+    process_data();
     CHK(write(dst, buffer, nb_bytes_read));
+  }
 
+  process_data();
   CHK((int)nb_bytes_read);
   return;
 }

@@ -4,7 +4,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdnoreturn.h>
-#include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -32,9 +31,9 @@ noreturn void usage(const char *msg) {
 }
 
 void copie(int src, int dst) {
-  char buffer[BUFFERLEN] = {0};
+  char buffer[BUFFERLEN_SEND] = {0};
   size_t nb_bytes_read;
-  while ((nb_bytes_read = read(src, buffer, (size_t)BUFFERLEN)) > 0) {
+  while ((nb_bytes_read = read(src, buffer, (size_t)BUFFERLEN_SEND)) > 0) {
     CHK(write(dst, buffer, nb_bytes_read));
   }
 
