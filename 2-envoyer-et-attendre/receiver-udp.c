@@ -1,4 +1,3 @@
-#include "udp.h"
 #include <netdb.h>
 #include <signal.h>
 #include <stdio.h>
@@ -8,6 +7,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#define BUFSIZE 512
 
 #define CHK(op)                                                                \
   do {                                                                         \
@@ -30,21 +30,26 @@ noreturn void usage(const char *msg) {
   fprintf(stderr, "usage: %s port_local\n", msg);
   exit(EXIT_FAILURE);
 }
-
 void process_data() {
   sleep(1 + rand() % 3);
   return;
 }
 
 void copie(int src, int dst) {
-  char buffer[BUFFERLEN_RECV + 1] = {0};
+  char buffer[BUFSIZE + 1] = {0};
   size_t nb_bytes_read;
-  while ((nb_bytes_read = read(src, buffer, (size_t)BUFFERLEN_RECV)) > 0) {
+  struct sockaddr_storage addr;
+  socklen_t len = sizeof(addr);
+
+  while ((nb_bytes_read = recvfrom(src, buffer, (size_t)BUFSIZE, 0,
+                                   (struct sockaddr *)&addr, &len)) > 0) {
     process_data();
     CHK(write(dst, buffer, nb_bytes_read));
   }
 
-  process_data();
+  char ack = 'A';
+  CHK(sendto(src, &ack, sizeof(char), 0, (struct sockaddr *)&addr, len));
+
   CHK((int)nb_bytes_read);
   return;
 }
@@ -75,6 +80,9 @@ int create_socket(const struct addrinfo *host) {
 
   int value = 0;
   CHK(setsockopt(fdsock, IPPROTO_IPV6, IPV6_V6ONLY, &value, sizeof value));
+
+  value = BUFSIZ;
+  CHK(setsockopt(fdsock, SOL_SOCKET, SO_RCVBUF, &value, sizeof value));
 
   return fdsock;
 }

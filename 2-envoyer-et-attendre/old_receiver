@@ -1,5 +1,7 @@
-#include <bits/types/struct_iovec.h>
+#include "udp.h"
+#include <asm-generic/socket.h>
 #include <netdb.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdnoreturn.h>
@@ -7,7 +9,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#define BUFSIZE 1024
+#define BUFFERLEN_RECV 512
 
 #define CHK(op)                                                                \
   do {                                                                         \
@@ -27,67 +29,92 @@
   } while (0)
 
 noreturn void usage(const char *msg) {
-  fprintf(stderr, "usage: %s ip_dest port_dest\n", msg);
+  fprintf(stderr, "usage: %s port_local\n", msg);
   exit(EXIT_FAILURE);
 }
 
+void process_data() {
+  sleep(1 + rand() % 3);
+  return;
+}
+
 void copie(int src, int dst) {
-  char buffer[BUFSIZE] = {0};
+  char buffer[BUFFERLEN_RECV + 1] = {0};
   size_t nb_bytes_read;
+  struct sockaddr_storage addr;
+  socklen_t len = sizeof(addr);
 
-  if ((nb_bytes_read = read(src, buffer, (size_t)BUFSIZE)) > 0) {
+  while ((nb_bytes_read = recvfrom(src, buffer, (size_t)BUFFERLEN_RECV, 0,
+                                   (struct sockaddr *)&addr, &len)) > 0) {
+    process_data();
     CHK(write(dst, buffer, nb_bytes_read));
-  }
-
-  while ((nb_bytes_read = read(src, buffer, (size_t)BUFSIZE)) > 0) {
-    CHK(write(dst, buffer, nb_bytes_read));
-
-    char ack;
-    CHK(read(dst, &ack, 1));
-
-    if (ack != 'A') {
-      fprintf(stderr, "Error: Invalid acknowledgment\n");
-      exit(1);
-    } else {
-      printf("\n got ack\n");
-    }
+    char ack = 'A';
+    CHK(sendto(src, &ack, sizeof(char), 0, (struct sockaddr *)&addr, len));
   }
 
   CHK((int)nb_bytes_read);
+  return;
 }
 
-struct addrinfo *config(const char *host, const char *port) {
-  struct addrinfo hints;
-  hints.ai_flags = AI_NUMERICSERV | AI_NUMERICHOST;
-  hints.ai_family = AF_UNSPEC;
+void quit(int signo) {
+  (void)signo;
+  exit(EXIT_SUCCESS);
+}
+
+struct addrinfo *config(const char *port) {
+  struct addrinfo hints = {0};
+  hints.ai_flags = AI_PASSIVE;
+  hints.ai_family = AF_INET6;
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_protocol = IPPROTO_UDP;
 
   struct addrinfo *result;
 
-  CHKA(getaddrinfo(host, port, &hints, &result));
+  int err = getaddrinfo(NULL, port, &hints, &result);
+  CHKA(err);
 
   return result;
 }
 
-int create_socket(struct addrinfo *host) {
+int create_socket(const struct addrinfo *host) {
   int fdsock = socket(host->ai_family, host->ai_socktype, host->ai_protocol);
   CHK(fdsock);
+
+  int value = 0;
+  CHK(setsockopt(fdsock, IPPROTO_IPV6, IPV6_V6ONLY, &value, sizeof value));
+
+  value = BUFSIZ;
+  CHK(setsockopt(fdsock, SOL_SOCKET, SO_RCVBUF, &value, sizeof value));
 
   return fdsock;
 }
 
 int main(int argc, char *argv[]) {
-  if (argc != 3)
+  if (argc != 2)
     usage(argv[0]);
 
-  struct addrinfo *host = config(argv[1], argv[2]);
-  int fdsock = create_socket(host);
-  CHK(connect(fdsock, host->ai_addr, host->ai_addrlen));
+  struct addrinfo *result = config(argv[1]);
+  int fdsock = create_socket(result);
+  CHK(bind(fdsock, result->ai_addr, result->ai_addrlen));
+  freeaddrinfo(result);
 
-  copie(STDIN_FILENO, fdsock);
+  struct sigaction sa;
+  sa.sa_handler = quit;
+  CHK(sigemptyset(&sa.sa_mask));
+  sa.sa_flags = 0;
+  CHK(sigaction(SIGTERM, &sa, NULL));
 
-  freeaddrinfo(host);
+  sigset_t mask;
+  CHK(sigfillset(&mask));
+  CHK(sigdelset(&mask, SIGTERM));
+  CHK(sigprocmask(SIG_BLOCK, &mask, NULL));
+
+  while (1) {
+    copie(fdsock, STDOUT_FILENO);
+  }
+
+  CHK(sigprocmask(SIG_SETMASK, NULL, NULL));
   close(fdsock);
-  return 0;
+
+  return EXIT_SUCCESS;
 }
