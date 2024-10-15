@@ -7,7 +7,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
-#define BUFSIZE 512
+#define BUFSIZE 1024
 
 #define CHK(op)                                                                \
   do {                                                                         \
@@ -36,19 +36,24 @@ void process_data() {
 }
 
 void copie(int src, int dst) {
-  char buffer[BUFSIZE + 1] = {0};
+  char buffer[BUFSIZE] = {0};
   size_t nb_bytes_read;
   struct sockaddr_storage addr;
   socklen_t len = sizeof(addr);
 
-  while ((nb_bytes_read = recvfrom(src, buffer, (size_t)BUFSIZE, 0,
-                                   (struct sockaddr *)&addr, &len)) > 0) {
+  nb_bytes_read =
+      recvfrom(src, buffer, (size_t)BUFSIZE, 0, (struct sockaddr *)&addr, &len);
+  process_data();
+  CHK(write(dst, buffer, nb_bytes_read));
+  CHK(connect(src, (struct sockaddr *)&addr, len));
+
+  while ((nb_bytes_read = read(src, buffer, BUFSIZE)) > 0) {
     process_data();
     CHK(write(dst, buffer, nb_bytes_read));
-  }
 
-  char ack = 'A';
-  CHK(sendto(src, &ack, sizeof(char), 0, (struct sockaddr *)&addr, len));
+    char ack = 'A';
+    CHK(sendto(src, &ack, sizeof(char), 0, (struct sockaddr *)&addr, len));
+  }
 
   CHK((int)nb_bytes_read);
   return;
@@ -61,7 +66,7 @@ void quit(int signo) {
 
 struct addrinfo *config(const char *port) {
   struct addrinfo hints = {0};
-  hints.ai_flags = AI_PASSIVE;
+  hints.ai_flags = AI_PASSIVE | AI_NUMERICHOST;
   hints.ai_family = AF_INET6;
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_protocol = IPPROTO_UDP;
@@ -76,12 +81,12 @@ struct addrinfo *config(const char *port) {
 
 int create_socket(const struct addrinfo *host) {
   int fdsock = socket(host->ai_family, host->ai_socktype, host->ai_protocol);
-  CHK(fdsock);
 
+  CHK(fdsock);
   int value = 0;
   CHK(setsockopt(fdsock, IPPROTO_IPV6, IPV6_V6ONLY, &value, sizeof value));
 
-  value = BUFSIZ;
+  value = BUFSIZE * 8;
   CHK(setsockopt(fdsock, SOL_SOCKET, SO_RCVBUF, &value, sizeof value));
 
   return fdsock;
@@ -108,7 +113,6 @@ int main(int argc, char *argv[]) {
   CHK(sigprocmask(SIG_BLOCK, &mask, NULL));
 
   while (1) {
-
     copie(fdsock, STDOUT_FILENO);
   }
 
