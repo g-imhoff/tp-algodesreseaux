@@ -1,5 +1,6 @@
 #include <bits/types/struct_iovec.h>
 #include <netdb.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdnoreturn.h>
@@ -27,7 +28,7 @@
   } while (0)
 
 noreturn void usage(const char *msg) {
-  fprintf(stderr, "usage: %s ip_dest port_dest\n", msg);
+  fprintf(stderr, "usage: %s port_local ip_dest port_dest\n", msg);
   exit(EXIT_FAILURE);
 }
 
@@ -56,38 +57,48 @@ void copie(int src, int dst) {
   CHK((int)nb_bytes_read);
 }
 
-struct addrinfo *config(const char *host, const char *port) {
+struct addrinfo *config(const char *host, const char *port, bool local) {
   struct addrinfo hints;
-  hints.ai_flags = AI_NUMERICSERV | AI_NUMERICHOST;
-  hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_DGRAM;
-  hints.ai_protocol = IPPROTO_UDP;
+
+  if (local) {
+    hints.ai_flags = AI_NUMERICSERV | AI_PASSIVE;
+    hints.ai_family = AF_INET6;
+  } else {
+    hints.ai_flags = AI_NUMERICSERV | AI_NUMERICHOST;
+    hints.ai_family = AF_UNSPEC;
+  }
 
   struct addrinfo *result;
-
   CHKA(getaddrinfo(host, port, &hints, &result));
 
   return result;
 }
 
-int create_socket(struct addrinfo *host) {
-  int fdsock = socket(host->ai_family, host->ai_socktype, host->ai_protocol);
-  CHK(fdsock);
+int create_socket() {
+  // création d'un socket IPv6 qui accepte les communications IPv4
+  int sockfd, value = 0;
+  CHK(sockfd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP));
+  CHK(setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &value, sizeof value));
 
-  return fdsock;
+  return sockfd;
 }
 
 int main(int argc, char *argv[]) {
-  if (argc != 3)
+  if (argc != 4)
     usage(argv[0]);
 
-  struct addrinfo *host = config(argv[1], argv[2]);
-  int fdsock = create_socket(host);
-  CHK(connect(fdsock, host->ai_addr, host->ai_addrlen));
+  int sockfd = create_socket();
+  struct addrinfo *local = config(NULL, argv[1], true);
+  CHK(bind(sockfd, local->ai_addr, local->ai_addrlen));
+  freeaddrinfo(local);
 
-  copie(STDIN_FILENO, fdsock);
+  struct addrinfo *dest = config(argv[2], argv[3], false);
+  CHK(connect(sockfd, dest->ai_addr, dest->ai_addrlen));
+  freeaddrinfo(dest);
 
-  freeaddrinfo(host);
-  close(fdsock);
+  copie(STDIN_FILENO, sockfd);
+
+  close(sockfd);
   return 0;
 }
