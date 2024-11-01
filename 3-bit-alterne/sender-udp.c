@@ -1,4 +1,6 @@
+#include <asm-generic/socket.h>
 #include <bits/types/struct_iovec.h>
+#include <errno.h>
 #include <netdb.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -9,6 +11,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #define BUFSIZE 1024
+#define MOD 2
 
 #define CHK(op)                                                                \
   do {                                                                         \
@@ -32,26 +35,28 @@ noreturn void usage(const char *msg) {
   exit(EXIT_FAILURE);
 }
 
+struct content {
+  unsigned int compteur;
+  char buffer[BUFSIZE];
+};
+
 void copie(int src, int dst) {
-  char buffer[BUFSIZE] = {0};
+  int compsize = sizeof(unsigned int);
+  struct content msg;
+  msg.compteur = 0;
   size_t nb_bytes_read;
 
-  if ((nb_bytes_read = read(src, buffer, (size_t)BUFSIZE)) > 0) {
-    CHK(write(dst, buffer, nb_bytes_read));
-  }
+  while ((nb_bytes_read = read(src, msg.buffer, (size_t)BUFSIZE)) > 0) {
+    CHK(write(dst, &msg, nb_bytes_read + compsize));
 
-  while ((nb_bytes_read = read(src, buffer, (size_t)BUFSIZE)) > 0) {
-    CHK(write(dst, buffer, nb_bytes_read));
-
-    char ack;
-    CHK(read(dst, &ack, 1));
-
-    if (ack != 'A') {
-      fprintf(stderr, "Error: Invalid acknowledgment\n");
-      exit(1);
-    } else {
-      printf("\n got ack\n");
+    unsigned int ack = -1;
+    while ((read(dst, &ack, sizeof(unsigned int)) == -1 && errno == EAGAIN) ||
+           msg.compteur != ack) {
+      CHK(write(dst, &msg, nb_bytes_read + compsize));
     }
+
+    printf("\n got ack %d\n", msg.compteur);
+    msg.compteur = (msg.compteur + 1) % MOD;
   }
 
   CHK((int)nb_bytes_read);
@@ -76,8 +81,8 @@ struct addrinfo *config(const char *host, const char *port, bool local) {
 }
 
 int create_socket() {
-  // création d'un socket IPv6 qui accepte les communications IPv4
-  int sockfd, value = 0;
+  int sockfd;
+  int value = 0;
   CHK(sockfd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP));
   CHK(setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &value, sizeof value));
 
@@ -92,6 +97,10 @@ int main(int argc, char *argv[]) {
   struct addrinfo *local = config(NULL, argv[1], true);
   CHK(bind(sockfd, local->ai_addr, local->ai_addrlen));
   freeaddrinfo(local);
+
+  struct timeval tv = {2, 0};
+  CHK(setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (struct timeval *)&tv,
+                 sizeof(struct timeval)));
 
   struct addrinfo *dest = config(argv[2], argv[3], false);
   CHK(connect(sockfd, dest->ai_addr, dest->ai_addrlen));

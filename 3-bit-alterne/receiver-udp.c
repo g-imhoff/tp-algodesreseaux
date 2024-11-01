@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #define BUFSIZE 1024
+#define MOD 2
 
 #define CHK(op)                                                                \
   do {                                                                         \
@@ -30,32 +31,40 @@ noreturn void usage(const char *msg) {
   fprintf(stderr, "usage: %s port_local\n", msg);
   exit(EXIT_FAILURE);
 }
+
+struct content {
+  unsigned int compteur;
+  char buffer[BUFSIZE];
+};
+
 void process_data() {
   sleep(1 + rand() % 3);
   return;
 }
 
 void copie(int src, int dst) {
-  char buffer[BUFSIZE] = {0};
+  struct content msg;
+  unsigned int compteur = 0;
+  int compsize = sizeof(unsigned int);
   size_t nb_bytes_read;
   struct sockaddr_storage addr;
   socklen_t len = sizeof(addr);
 
-  nb_bytes_read =
-      recvfrom(src, buffer, (size_t)BUFSIZE, 0, (struct sockaddr *)&addr, &len);
-  process_data();
-  CHK(write(dst, buffer, nb_bytes_read));
-  CHK(connect(src, (struct sockaddr *)&addr, len));
+  while ((nb_bytes_read = recvfrom(src, &msg, sizeof msg, 0,
+                                   (struct sockaddr *)&addr, &len)) > 0) {
 
-  while ((nb_bytes_read = read(src, buffer, BUFSIZE)) > 0) {
     process_data();
-    CHK(write(dst, buffer, nb_bytes_read));
 
-    char ack = 'A';
-    CHK(sendto(src, &ack, sizeof(char), 0, (struct sockaddr *)&addr, len));
+    if (msg.compteur % 2 == compteur % 2) {
+      CHK(write(dst, msg.buffer, nb_bytes_read - compsize));
+      CHK(sendto(src, &compteur, compsize, 0, (struct sockaddr *)&addr, len));
+      compteur = (compteur + 1) % MOD;
+    } else {
+      CHK(sendto(src, &msg.compteur, compsize, 0, (struct sockaddr *)&addr,
+                 len));
+    }
   }
 
-  CHK((int)nb_bytes_read);
   return;
 }
 
