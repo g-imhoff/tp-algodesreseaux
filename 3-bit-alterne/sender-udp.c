@@ -42,9 +42,8 @@ struct content {
 
 void copie(int src, int dst) {
   int compsize = sizeof(unsigned int);
-  struct content msg;
-  msg.compteur = 0;
-  size_t nb_bytes_read;
+  struct content msg = {0};
+  size_t nb_bytes_read = -1;
 
   while ((nb_bytes_read = read(src, msg.buffer, (size_t)BUFSIZE)) > 0) {
     CHK(write(dst, &msg, nb_bytes_read + compsize));
@@ -63,7 +62,7 @@ void copie(int src, int dst) {
 }
 
 struct addrinfo *config(const char *host, const char *port, bool local) {
-  struct addrinfo hints;
+  struct addrinfo hints = {0};
   hints.ai_socktype = SOCK_DGRAM;
 
   if (local) {
@@ -81,9 +80,9 @@ struct addrinfo *config(const char *host, const char *port, bool local) {
 }
 
 int create_socket() {
-  int sockfd;
+  int sockfd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+  CHK(sockfd);
   int value = 0;
-  CHK(sockfd = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP));
   CHK(setsockopt(sockfd, IPPROTO_IPV6, IPV6_V6ONLY, &value, sizeof value));
 
   return sockfd;
@@ -98,7 +97,7 @@ int main(int argc, char *argv[]) {
   CHK(bind(sockfd, local->ai_addr, local->ai_addrlen));
   freeaddrinfo(local);
 
-  struct timeval tv = {2, 0};
+  struct timeval tv = {10, 0};
   CHK(setsockopt(sockfd, SOL_SOCKET, SO_RCVTIMEO, (struct timeval *)&tv,
                  sizeof(struct timeval)));
 
