@@ -158,30 +158,33 @@ struct ll_content ll_delunder(struct ll_content msg, unsigned int ack) {
   return msg;
 }
 
-bool ll_isfull(struct ll_content msg) { return msg.lenght == msg.max_length; }
+bool ll_isfull(struct ll_content msg) { return msg.lenght >= msg.max_length; }
 
 // code socket
 void copie(int src, int dst) {
   unsigned int compteur = 0;
   struct ll_content msg = ll_init();
   size_t nb_bytes_read = 1;
+  char buffer[BUFSIZE] = {0};
 
   while (nb_bytes_read > 0) {
-    while ((nb_bytes_read > 0) && !ll_isfull(msg)) {
-      char buffer[BUFSIZE];
-      nb_bytes_read = read(src, buffer, sizeof(buffer));
-      msg = ll_add(msg, compteur, buffer, nb_bytes_read);
-      compteur = (compteur + 1) % MOD;
+    while (!ll_isfull(msg)) {
+      if ((nb_bytes_read = read(src, buffer, sizeof(buffer)) > 0)) {
+        msg = ll_add(msg, compteur, buffer, nb_bytes_read);
+        compteur = (compteur + 1) % MOD;
+      }
     }
 
     for (struct ll_node *tmp = msg.head; tmp != NULL; tmp = tmp->next) {
-      CHK(write(dst, &tmp->message, sizeof(tmp->message)));
+      CHK(write(dst, &tmp->message,
+                tmp->message.nb_bytes + (2 * sizeof(unsigned int))));
     }
 
     unsigned int ack = -1;
     while (read(dst, &ack, sizeof(unsigned int)) == -1 && errno == EAGAIN) {
       for (struct ll_node *tmp = msg.head; tmp != NULL; tmp = tmp->next) {
-        CHK(write(dst, &tmp->message, sizeof(tmp->message)));
+        CHK(write(dst, &tmp->message,
+                  tmp->message.nb_bytes + (2 * sizeof(unsigned int))));
       }
     }
 
